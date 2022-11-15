@@ -26,7 +26,8 @@ const config: UserConfig = {
 			'pug-code-gen': getPkg('pug-code-gen'),
 			'pug-runtime': getPkg('pug-runtime')
 		},
-		'process.env.BABEL_TYPES_8_BREAKING': 'null'
+		'process.env.BABEL_TYPES_8_BREAKING': 'null',
+		'process.env.NODE_DEBUG': 'false'
 	},
 	resolve: {
 		alias: {
