@@ -27,7 +27,8 @@ const config: UserConfig = {
 			'pug-runtime': getPkg('pug-runtime')
 		},
 		'process.env.BABEL_TYPES_8_BREAKING': 'null',
-		'process.env.NODE_DEBUG': 'false'
+		'process.env.NODE_DEBUG': 'false',
+		MONACO_EDITOR_VERSION: JSON.stringify(getPkg('monaco-editor').version)
 	},
 	resolve: {
 		alias: {

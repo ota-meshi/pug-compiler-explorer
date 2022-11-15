@@ -1,21 +1,9 @@
 <script lang="ts" context="module">
-	import type {
-		editor as MEditor,
-		languages,
-		Range,
-		CancellationToken,
-		IDisposable
-	} from 'monaco-editor';
+	import type { editor as MEditor } from 'monaco-editor';
 	import type { TransitionConfig } from 'svelte/transition';
 
 	const appStarting = new Promise((resolve) => setTimeout(resolve, 300));
 
-	export type ProvideCodeActions = (
-		model: MEditor.ITextModel,
-		range: Range,
-		context: languages.CodeActionContext,
-		token: CancellationToken
-	) => languages.ProviderResult<languages.CodeActionList>;
 	export type SourceLocation = {
 		start: {
 			line: number;
@@ -32,6 +20,7 @@
 	import { onDestroy, onMount, createEventDispatcher } from 'svelte';
 	import { loadMonacoEditor } from './monaco-loader';
 	import type { MaybePromise } from './types';
+	import { setup, type ProvideCodeActions } from './monaco-setup';
 
 	const dispatch = createEventDispatcher();
 
@@ -46,7 +35,7 @@
 
 	export let waiting: MaybePromise<null | void> = null;
 	let rootElement: HTMLDivElement | null = null;
-	let editor: MEditor.IStandaloneDiffEditor | MEditor.IStandaloneCodeEditor | null = null;
+	// let editor: MEditor.IStandaloneDiffEditor | MEditor.IStandaloneCodeEditor | null = null;
 	// eslint-disable-next-line func-style -- variable
 	let setModelLanguage: (lang: string) => void = () => {
 		// init
@@ -69,175 +58,74 @@
 	};
 	// eslint-disable-next-line func-style -- variable
 	let getLeftEditor: () => MEditor.IStandaloneCodeEditor | null = () => null;
-	let codeActionProviderDisposable: IDisposable = {
-		dispose: () => {
-			// init
-		}
+	// eslint-disable-next-line func-style -- variable
+	let disposeEditor: () => void = () => {
+		// init
+	};
+	// eslint-disable-next-line func-style -- variable
+	let registerCodeActionProvider: (provideCodeActions: ProvideCodeActions) => void = () => {
+		// init
 	};
 	const loadingMonaco = loadMonacoEditor();
 	const starting = appStarting;
 
-	$: loading = Promise.all([waiting, loadingMonaco, starting]);
-	$: {
-		if (setLeftValue) {
-			setLeftValue(code);
-		}
-	}
-	$: {
-		if (setRightValue) {
-			setRightValue(rightCode);
-		}
-	}
-	$: {
-		if (setLeftMarkers) {
-			setLeftMarkers(markers);
-		}
-	}
-	$: {
-		if (setRightMarkers) {
-			setRightMarkers(rightMarkers);
-		}
-	}
-	$: {
-		disposeCodeActionProvider();
-		if (provideCodeActions) {
-			void loadingMonaco.then((monaco) => {
-				codeActionProviderDisposable = monaco.languages.registerCodeActionProvider(language, {
-					provideCodeActions(model, ...args) {
-						const editor = getLeftEditor?.();
-						if (editor?.getModel()!.uri !== model.uri) {
-							return {
-								actions: [],
-								dispose() {
-									/* nop */
-								}
-							};
-						}
-						return provideCodeActions!(model, ...args);
-					}
-				});
-			});
-		}
-	}
+	$: loading = Promise.all([waiting, loadingMonaco, starting]).then(() => console.log('start'));
+	$: setLeftValue(code);
+	$: setRightValue(rightCode);
+	$: setLeftMarkers(markers);
+	$: setRightMarkers(rightMarkers);
+	$: if (provideCodeActions) registerCodeActionProvider(provideCodeActions);
 	$: setModelLanguage(language);
 
 	let started = false;
-	$: if (started) {
+	$: hasRootElement = Boolean(rootElement);
+	$: if (started && hasRootElement) {
 		destroy();
-		void setup(diffEditor);
+		void (async () => {
+			({
+				getLeftEditor,
+				setLeftMarkers,
+				setLeftValue,
+				setModelLanguage,
+				setRightMarkers,
+				setRightValue,
+				disposeEditor,
+				registerCodeActionProvider
+			} = await setup0(diffEditor));
+		})();
 	}
 
-	async function setup(diffEditor: boolean) {
-		await loading;
-		const monaco = await loadingMonaco;
-		const options = {
-			value: code,
-			readOnly,
-			theme: 'vs-dark',
-			language,
-			automaticLayout: true,
-			fontSize: 14,
-			// tabSize: 2,
-			minimap: {
-				enabled: false
+	function setup0(diffEditor: boolean) {
+		return setup({
+			init: {
+				value: code,
+				markers,
+				right: {
+					value: rightCode,
+					markers: rightMarkers
+				},
+				language,
+				readOnly
 			},
-			renderControlCharacters: true,
-			renderIndentGuides: true,
-			renderValidationDecorations: 'on' as const,
-			renderWhitespace: 'boundary' as const,
-			scrollBeyondLastLine: false
-		};
-
-		if (diffEditor) {
-			editor = monaco.editor.createDiffEditor(rootElement!, {
-				originalEditable: true,
-				...options
-			});
-			const original = monaco.editor.createModel(code, language);
-			const modified = monaco.editor.createModel(rightCode, language);
-
-			const leftEditor = editor.getOriginalEditor();
-			const rightEditor = editor.getModifiedEditor();
-			rightEditor.updateOptions({ readOnly: true });
-			editor.setModel({ original, modified });
-			original.onDidChangeContent(() => {
-				const value = original.getValue();
-				code = value;
-			});
-			setModelLanguage = (lang) => {
-				for (const model of [original, modified]) {
-					monaco.editor.setModelLanguage(model, lang);
+			listeners: {
+				onChangeValue: (value) => {
+					code = value;
+				},
+				onDidChangeCursorPosition(evt) {
+					dispatch('changeCursorPosition', evt);
+				},
+				onFocus() {
+					dispatch('focusEditorText');
 				}
-			};
-			setLeftValue = (code) => {
-				const value = original.getValue();
-				if (code !== value) {
-					original.setValue(code);
-				}
-			};
-			setRightValue = (code) => {
-				const value = modified.getValue();
-				if (code !== value) {
-					modified.setValue(code);
-				}
-			};
-			setLeftMarkers = (markers) => {
-				void updateMarkers(leftEditor, markers);
-			};
-			setRightMarkers = (markers) => {
-				void updateMarkers(rightEditor, markers);
-			};
-			getLeftEditor = () => leftEditor;
-
-			setLeftMarkers(markers);
-			setRightMarkers(rightMarkers);
-		} else {
-			const codeEditor = (editor = monaco.editor.create(rootElement!, options));
-
-			editor.onDidChangeModelContent(() => {
-				const value = codeEditor.getValue();
-				code = value;
-			});
-			editor.onDidChangeCursorPosition((evt) => {
-				dispatch('changeCursorPosition', evt);
-			});
-			editor.onDidFocusEditorText((evt) => {
-				dispatch('focusEditorText', evt);
-			});
-			setModelLanguage = (lang) => {
-				const model = codeEditor.getModel();
-				if (model) {
-					monaco.editor.setModelLanguage(model, lang);
-				}
-			};
-			setLeftValue = (code) => {
-				const value = codeEditor.getValue();
-				if (code !== value) {
-					codeEditor.setValue(code);
-				}
-			};
-			setRightValue = () => {
-				/* noop */
-			};
-			setLeftMarkers = (markers) => {
-				void updateMarkers(codeEditor, markers);
-			};
-			setRightMarkers = () => {
-				/* noop */
-			};
-			getLeftEditor = () => codeEditor;
-
-			setLeftMarkers(markers);
-		}
+			},
+			rootElement: rootElement!,
+			useDiffEditor: diffEditor
+		});
 	}
 
 	function destroy() {
-		disposeCodeActionProvider();
-		dispose(editor);
-		// rootElement.innerHTML = ""
-		editor = null;
+		disposeEditor();
 	}
-
 	onMount(() => {
 		started = true;
 	});
@@ -246,10 +134,8 @@
 	});
 
 	export function setCursorPosition(loc: SourceLocation): void {
-		if (editor) {
-			const leftEditor = diffEditor
-				? (editor as MEditor.IStandaloneDiffEditor)?.getOriginalEditor()
-				: editor;
+		const leftEditor = getLeftEditor();
+		if (leftEditor) {
 			leftEditor.setSelection({
 				startLineNumber: loc.start.line,
 				startColumn: loc.start.column,
@@ -258,47 +144,6 @@
 			});
 			leftEditor.revealLineInCenter(loc.start.line);
 		}
-	}
-	async function updateMarkers(
-		editor: MEditor.IStandaloneCodeEditor,
-		markers: MEditor.IMarkerData[]
-	) {
-		const monaco = await loadingMonaco;
-		const model = editor.getModel()!;
-		const id = editor.getId();
-		monaco.editor.setModelMarkers(
-			model,
-			id,
-			JSON.parse(JSON.stringify(markers)) as MEditor.IMarkerData[]
-		);
-	}
-
-	/**
-	 * Dispose.
-	 * @param x The target object.
-	 */
-	function dispose(x: any) {
-		if (x == null) {
-			return;
-		}
-		/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- ignore */
-		if (x.getOriginalEditor) {
-			dispose(x.getOriginalEditor());
-		}
-		if (x.getModifiedEditor) {
-			dispose(x.getModifiedEditor());
-		}
-		if (x.getModel) {
-			dispose(x.getModel());
-		}
-		if (x.dispose) {
-			x.dispose();
-		}
-		/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- ignore */
-	}
-
-	function disposeCodeActionProvider() {
-		codeActionProviderDisposable.dispose();
 	}
 
 	function loadingTypewriter(node: HTMLElement, _opt?: any): TransitionConfig {
