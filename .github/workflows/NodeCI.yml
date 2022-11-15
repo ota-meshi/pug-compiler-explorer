@@ -14,9 +14,12 @@ jobs:
       - uses: actions/setup-node@v3
       - name: Install Packages
         run: npm install
-      - name: Build
+      - name: Check
         run: |+
-          npm run build
+          npm run check
       - name: Lint
         run: |+
           npm run lint
+      - name: Build
+        run: |+
+          npm run build
