@@ -1,5 +1,5 @@
 <script lang="ts">
-	import MonacoEditor from './MonacoEditor.svelte';
+	import MonacoEditor from '@ota-meshi/site-kit-monaco-editor-svelte';
 	import lex from 'pug-lexer';
 	// @ts-expect-error -- no type
 	import parse from 'pug-parser';
