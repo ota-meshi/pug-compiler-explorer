@@ -22,11 +22,11 @@
 		"pug-runtime": "^3.0.1"
 	},
 	"devDependencies": {
-		"@ota-meshi/eslint-plugin": "^0.13.1",
+		"@ota-meshi/eslint-plugin": "^0.15.0",
 		"@sveltejs/kit": "next",
 		"@types/node": "^18.15.7",
-		"@typescript-eslint/eslint-plugin": "^5.43.0",
-		"@typescript-eslint/parser": "^5.43.0",
+		"@typescript-eslint/eslint-plugin": "^6.0.0",
+		"@typescript-eslint/parser": "^6.0.0",
 		"eslint": "^8.27.0",
 		"eslint-config-prettier": "^8.5.0",
 		"eslint-plugin-json-schema-validator": "^4.0.2",
@@ -39,7 +39,7 @@
 		"monaco-editor": "^0.40.0",
 		"prettier": "^3.0.0",
 		"prettier-plugin-svelte": "^3.0.0",
-		"svelte": "^3.44.0",
+		"svelte": "^4.0.0",
 		"svelte-adapter-ghpages": "^0.1.0",
 		"svelte-check": "^3.0.0",
 		"svelte-preprocess": "^5.0.0",
