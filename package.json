@@ -22,7 +22,7 @@
 		"pug-runtime": "^3.0.1"
 	},
 	"devDependencies": {
-		"@ota-meshi/eslint-plugin": "^0.15.0",
+		"@ota-meshi/eslint-plugin": "^0.16.0",
 		"@sveltejs/kit": "^2.0.0",
 		"@types/node": "^20.0.0",
 		"@typescript-eslint/eslint-plugin": "^7.0.0",
